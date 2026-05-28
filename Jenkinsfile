@@ -21,21 +21,22 @@ pipeline {
 
         stage('Show Tool Versions') {
             steps {
-                bat 'java -version'
-                bat 'mvn -version'
-                bat 'docker --version'
+                sh 'java -version'
+                sh 'mvn -version'
             }
         }
 
         stage('Compile') {
             steps {
-                bat 'mvn -B -DskipTests clean compile'
+                sh 'mvn -B -DskipTests clean compile'
             }
         }
 
-        stage('Test') {
+        stage('Unit Tests') {
             steps {
-                bat 'mvn -B test'
+                // Run only unit tests for now. Integration tests need MySQL,
+                // which we'll wire up in a later iteration.
+                sh 'mvn -B test -Dtest=EmployeeServiceTest,EmployeeControllerTest'
             }
             post {
                 always {
@@ -47,21 +48,32 @@ pipeline {
 
         stage('Package') {
             steps {
-                bat 'mvn -B -DskipTests package'
+                sh 'mvn -B -DskipTests package'
             }
         }
 
-        stage('Docker Build') {
-            steps {
-                bat 'docker build -t %DOCKER_IMAGE%:%BUILD_NUMBER% .'
-                bat 'docker tag  %DOCKER_IMAGE%:%BUILD_NUMBER% %DOCKER_IMAGE%:latest'
-            }
-        }
+        // -----------------------------------------------------------------
+        // Docker Build stage is temporarily disabled.
+        //
+        // To enable it, the Jenkins container needs:
+        //   1) The Docker CLI installed inside it.
+        //   2) The host Docker socket mounted:
+        //        -v /var/run/docker.sock:/var/run/docker.sock
+        //      (set when starting the Jenkins container)
+        //
+        // Once those are in place, uncomment this stage.
+        // -----------------------------------------------------------------
+        //
+        // stage('Docker Build') {
+        //     steps {
+        //         sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
+        //         sh "docker tag  ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest"
+        //     }
+        // }
 
         stage('Archive JAR') {
             steps {
-                archiveArtifacts artifacts: 'target/*.jar',
-                                 fingerprint: true
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
         }
     }
@@ -71,10 +83,10 @@ pipeline {
             echo "Build #${BUILD_NUMBER} finished with status: ${currentBuild.currentResult}"
         }
         success {
-            echo "Pipeline completed successfully. Image: ${DOCKER_IMAGE}:${BUILD_NUMBER}"
+            echo 'Pipeline completed successfully. JAR archived.'
         }
         failure {
-            echo "Pipeline failed. Check the stage logs."
+            echo 'Pipeline failed. Check the stage logs.'
         }
     }
 }
