@@ -23,13 +23,20 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: testdb
+          MYSQL_ROOT_HOST: '%'
         ports:
           - 3306:3306
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=10
+          --health-retries=15
+          --health-start-period=30s
+
+    env:
+      SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/testdb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
 
     steps:
 
@@ -43,21 +50,38 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Wait for MySQL to be ready
+      - name: Print toolchain versions
         run: |
-          for i in {1..30}; do
-            if mysqladmin ping -h 127.0.0.1 -P 3306 -uroot -proot --silent; then
-              echo "MySQL is ready"
+          java -version
+          mvn -version
+
+      - name: Wait for MySQL to accept connections to testdb
+        run: |
+          for i in {1..60}; do
+            if mysql -h 127.0.0.1 -P 3306 -uroot -proot -e "USE testdb; SELECT 1;" >/dev/null 2>&1; then
+              echo "MySQL + testdb are ready"
               exit 0
             fi
-            echo "Waiting for MySQL... ($i/30)"
+            echo "Waiting for MySQL/testdb... ($i/60)"
             sleep 2
           done
-          echo "MySQL did not become ready in time"
+          echo "MySQL/testdb did not become ready in time"
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot -e "SHOW DATABASES;" || true
           exit 1
 
       - name: Build, Run Tests and Package
-        run: mvn -B clean package
+        run: mvn -B -e clean package
+
+      - name: Upload Surefire test reports (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: |
+            target/surefire-reports/**
+            target/site/**
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload JAR artifact
         if: success()
