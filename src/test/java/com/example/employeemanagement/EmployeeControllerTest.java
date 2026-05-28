@@ -17,6 +17,8 @@ import com.example.employeemanagement.dto.EmployeeDTO;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -118,7 +120,7 @@ public class EmployeeControllerTest {
                 .salary(50000.0)
                 .build();
 
-        when(employeeService.createEmployee(employeeDTO))
+        when(employeeService.createEmployee(any(EmployeeDTO.class)))
                 .thenReturn(employeeDTO);
 
         mockMvc.perform(post("/api/employees")
@@ -142,7 +144,7 @@ public class EmployeeControllerTest {
                 .salary(60000.0)
                 .build();
 
-        when(employeeService.updateEmployee(1L, updatedDTO))
+        when(employeeService.updateEmployee(eq(1L), any(EmployeeDTO.class)))
                 .thenReturn(updatedDTO);
 
         mockMvc.perform(put("/api/employees/1")
