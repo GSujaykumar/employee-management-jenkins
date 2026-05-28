@@ -17,6 +17,20 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testdb
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
     steps:
 
       - name: Checkout Project
@@ -27,9 +41,29 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: maven
 
-      - name: Give Permission to Maven Wrapper
-        run: chmod +x mvnw
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -P 3306 -uroot -proot --silent; then
+              echo "MySQL is ready"
+              exit 0
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
+          echo "MySQL did not become ready in time"
+          exit 1
 
-      - name: Build and Run Tests
-        run: ./mvnw clean test
+      - name: Build, Run Tests and Package
+        run: mvn -B clean package
+
+      - name: Upload JAR artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: employee-management-jar
+          path: target/*.jar
+          if-no-files-found: error
+          retention-days: 7
