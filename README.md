@@ -1,5 +1,9 @@
 # Employee Management API
 
+[![CI](https://github.com/GSujaykumar/employee-management-jenkins/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/GSujaykumar/employee-management-jenkins/actions/workflows/ci.yml)
+
+A Spring Boot REST API for managing employees, backed by MySQL, with full CRUD endpoints, JUnit/Mockito unit tests, Spring Boot integration tests against a real MySQL service container, and a CI pipeline running on GitHub Actions.
+
 ## Features
 - Spring Boot CRUD APIs
 - MySQL Database
