@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    tools {
+        // The name 'Maven' must match exactly the name configured in:
+        //   Manage Jenkins -> Tools -> Maven installations
+        maven 'Maven'
+    }
+
     options {
         timestamps()
         buildDiscarder(logRotator(numToKeepStr: '10'))
